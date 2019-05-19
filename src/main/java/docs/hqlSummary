@@ -1,0 +1,173 @@
+～～～～～～～～～～～～～～～～～～1,2,3数据是由mapreduce处理产生的～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～
+1.ods_weblog_origin表
+  1.1 该表描述的是记录的原始信息
+  1.2 ods_weblog_origin表的字段：
+  valid            字段是否有效（自定义标识，和访问记录无关）
+	remote_addr      ip
+	remote_user      用户
+	time_local       访问时间
+	request          记录请求的url
+	status           状态码
+	body_bytes_sent  发送给客户端文件主体内容大小
+	http_referer     从哪个页面链接过来的
+	http_user_agent  客户浏览器的相关信息
+	datestr          日期（分区表的分区字段）
+	
+2.ods_click_pageviews表
+  2.1 该表对应文件after_ClickStream_step2,关注的是浏览每个页面的行为
+  2.2 该表在ods_weblog_origin的基础上添加了session，visit_step两个字段
+  2.3 ods_click_pageviews表的字段：
+	session          会话id
+	remote_addr      ip
+	remote_user      用户
+	time_local       访问时间
+	request          记录请求的url
+	visit_step       该次访问在session是第几步
+	page_staylong    在该页面停留时间
+	http_referer     从哪个页面链接过来的
+	http_user_agent  客户浏览器的相关信息
+	body_bytes_sent  发送给客户端文件主体内容大小
+	status           状态码
+	datestr          日期（分区表的分区字段）
+	
+3.click_stream_visit表
+  3.1 该表对应文件after_ClickStreamVisit_step3，关注的是会话
+  3.2 该表是在ods_click_pageviews基础上，将多个记录识别为会话
+  3.2 click_stream_visit表的字段：
+	session          会话id
+	remote_addr      ip
+	intime           该会话的开始时间
+	outtime          该会话的结束时间
+	inpage           该会话的开始页面
+	outpage          该会话的结束页面
+	referal          该对话从哪个页面链接过来的
+	pagevisits       该对话访问的页面数量
+	datestr          日期（分区表的分区字段）
+	
+～～～～～～～～～～～～～～4,5,6表中的数据是在ods_weblog_origin全体字段的基础上，拆分大字段变为几个具体字段～～～～～～～～～～～～～
+
+4.ods_weblog_detail表
+  4.1 ods_weblog_detail是由ods_weblog_origin转化而来的，将http_referer,time_local字段拆开，变成几个字段
+  4.2 ods_weblog_detail表的字段：
+	valid             字段是否有效（自定义标识，和访问记录无关）
+	remote_addr       ip
+	remote_user       用户
+	time_local        访问时间
+	daystr            日期字段（由time_local拆开得到）
+	timestr           时间字段（由time_local拆开得到）
+	month             月份字段（由time_local拆开得到）
+	day               日字段（由time_local拆开得到）
+	hour              小时字段（由time_local拆开得到）
+	request           记录请求的url
+	status            状态码
+	body_bytes_sent   发送给客户端文件主体内容大小
+	http_referer      从哪个页面链接过来的
+	ref_host          来源的站点（由http_referer拆开得到）
+	ref_path          来源的路径（由http_referer拆开得到）
+	ref_query         来源参数（由http_referer拆开得到） 
+	ref_query_id      来源参数id（由http_referer拆开得到）
+	http_user_agent   客户浏览器的相关信息
+	datestr           日期（分区表的分区字段）
+
+5.t_ods_tmp_referurl表
+  5.1 t_ods_tmp_referurl是由ods_weblog_origin转化而来的，将http_referer字段拆开，变成几个字段
+  5.2 t_ods_tmp_referurl表字段：
+	valid                字段是否有效（自定义标识，和访问记录无关）
+	remote_addr          ip
+	remote_user          用户
+	time_local           访问时间
+	request              记录请求的url
+	status               状态码
+	body_bytes_sent      发送给客户端文件主体内容大小
+	http_referer         从哪个页面链接过来的
+	http_user_agent      客户浏览器的相关信息
+	datestr              日期（分区表的分区字段）
+	host                 来源的站点（由http_referer拆开得到）
+	path                 来源的路径（由http_referer拆开得到）
+	query                来源参数（由http_referer拆开得到） 
+	query_id             来源参数id（由http_referer拆开得到）
+
+6.t_ods_tmp_detail表（和ods_weblog_detail表内容一样）
+  6.1 t_ods_tmp_detai是由t_ods_tmp_referurl转化而来的，将http_referer,time_local字段拆开，变成几个字段
+  6.2 t_ods_tmp_detai表的字段：
+	valid            字段是否有效（自定义标识，和访问记录无关）
+	remote_addr      ip
+	remote_user      用户
+	time_local       访问时间
+	request          记录请求的url
+	status           状态码
+	body_bytes_sent  发送给客户端文件主体内容大小
+	http_referer     从哪个页面链接过来的
+	http_user_agent  客户浏览器的相关信息
+	datestr          日期（分区表的分区字段）
+	host             来源的站点（由http_referer拆开得到）
+	path             来源的路径（由http_referer拆开得到）
+	query            来源参数（由http_referer拆开得到） 
+	query_id         来源参数id（由http_referer拆开得到）
+	daystr           日期字段（由time_local拆开得到）
+	tmstr            时间字段（由time_local拆开得到）
+	month            月份字段（由time_local拆开得到）
+	day              日字段（由time_local拆开得到）
+	hour             小时字段（由time_local拆开得到）
+
+～～～～～～～～～～～～～～～～～～～～～～～～～pv,uv统计～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～
+7.select count(*),month,day,hour from ods_weblog_detail group by month,day,hour;
+  这就是按照时间来统计访问量
+  
+8.统计各个小时的pv
+  (1)建表：
+      create table dw_pvs_hour(month string,day string,hour string,pvs bigint) partitioned by(datestr string);
+  (2)向表中插入数据：
+      insert into table dw_pvs_hour partition(datestr='2013-09-18')
+      select a.month as month,a.day as day,a.hour as hour,count(1) as pvs from ods_weblog_detail a
+      where a.datestr='2013-09-18' group by a.month,a.day,a.hour;
+  
+9.统计每天的pv
+  (1)建表：
+      create table dw_pvs_day(pvs bigint,month string,day string);
+  (2)向表中插入数据：
+      insert into table dw_pvs_day
+      Select sum(pvs) as pvs,month,day from dw_pvs_hour group by month,day having day='18';
+
+10.按终端统计pv
+  (1)select distinct(http_user_agent) from ods_weblog_detail where http_user_agent like '%Mozilla%' limit 200;
+  
+11.统计人均浏览页数
+  (1)建表：
+      create table dw_avgpv_user_d(
+      day string,
+      avgpv string);
+  (2)向表中插入数据：
+      insert into table dw_avgpv_user_d
+      select '2013-09-18',sum(b.pvs)/count(b.remote_addr) from
+      (select remote_addr,count(1) as pvs from ods_weblog_detail where datestr='2013-09-18' group by remote_addr) b;
+      
+12.按referer统计pv总量
+  (1)建表：
+      create table dw_pvs_referer_h(referer_url string,referer_host string,month string,day string,hour
+      string,pv_referer_cnt bigint) partitioned by(datestr string);
+  (2)向表中插入数据：
+      insert into table dw_pvs_referer_h partition(datestr='2016-03-18')
+      select http_referer,ref_host,month,day,hour,count(1) as pv_referer_cnt
+      from ods_weblog_detail
+      group by http_referer,ref_host,month,day,hour
+      having ref_host is not null
+      order by hour asc,day asc,month asc,pv_referer_cnt desc;
+      
+13.按小时粒度统计各来访域名的产生的 pv 
+  (1)建表：
+      create table dw_ref_host_visit_cnts_h(ref_host string,month string,day string,hour string,ref_host_cnts bigint)
+      partitioned by(datestr string);
+  (2)向表中插入数据：
+      insert into table dw_ref_host_visit_cnts_h partition(datestr='2016-03-18')
+      select ref_host,month,day,hour,count(1) as ref_host_cnts
+      from ods_weblog_detail
+      group by ref_host,month,day,hour
+      having ref_host is not null
+      order by hour asc,day asc,month asc,ref_host_cnts desc;
+  
+14.统计pv总量的最大来源topN
+  (1)查询：
+      select ref_host,ref_host_cnts,concat(month,hour,day),
+      row_number() over (partition by concat(month,hour,day) order by ref_host_cnts desc) as od
+      from dw_ref_host_visit_cnts_h

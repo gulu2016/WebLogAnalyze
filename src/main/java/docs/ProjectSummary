@@ -1,0 +1,56 @@
+一、项目整体流程
+1.数据采集：通过flume采集服务器日志，将日志汇聚到HDFS上。
+2.数据预处理：通过mapreduce对采集到的数据进行预处理，包括清洗（判断记录是否缺失字段）、格式整理（把记录封装进对象）
+3.数据入库：将清洗之后的数据导入到HIVE仓库中，创建相应的表
+4.数据分析：核心内容，开发ETL分析语句，得到各种统计结果
+5.数据出库：将分析结果写入mysql数据库中，供数据可视化使用
+6.数据展现：将分析的数据进行可视化
+
+二、使用到的技术（2-5是关注主体）
+1.数据采集：服务器数据通过flume采集到HDFS
+2.数据预处理：HDFS数据通过mapreduce预处理，再存储到HDFS上
+3.数据入库:使用hive命令
+4.数据ETL和分析:使用hive命令
+5.数据出库：hive处理的数据在HDFS上，通过sqoop可以将其从HDFS上迁移到MYSQL上
+6.数据展现：读取mysql上的数据进行图像显示
+7.整体业务调度：通过azkaban调度
+
+三、技术展开讨论--数据预处理（序号顺序就是java程序执行的顺序）
+0.原始数据是access.log.fensi
+1.WeblogPreProcess的作用：将每一条信息对应封装到一个WebLogBean下，处理结束的数据是after_WeblogPreProcess_step1
+2.ClickStream：
+  2.1 ClickStream的输入数据是after_WeblogPreProcess_step1,输出数据是after_ClickStream_step2
+  2.2 map函数的输入是一行WebLogBean.toString()的记录，输出是<WebLogBean.ip,WebLogBean>
+  2.3 reduceTask的输入：<WebLogBean.ip,WebLogBean>，输出是<null,(session,ip,WebLogBean的属性,当前访问的步数stepNum)>
+  2.4 ClickStream的作用：为ods_click_pageviews表准备数据，关注的是浏览每个页面的行为
+3.ClickStreamVisit：
+  3.1 ClickStreamVisit的输入数据是after_ClickStream_step2,输出数据是after_ClickStreamVisit_step3
+  3.2 map函数的输入是一行访问记录(session,ip,WebLogBean的属性,当前访问的步数stepNum),输出是<sessionID,PageViewsBean>
+  3.3 reduce函数输入<sessionID,PageViewsBean>,输出<null, visitBean>
+  3.4 ClickStreamVisit的作用：为click_stream_visit表准备数据，关注的是浏览每个页面的行为
+  
+四、技术展开讨论--数据入库
+Load data local inpath '/weblog/clickstream/visits' overwrite into table
+click_stream_visit partition(datestr='2013-09-18');
+
+五、技术展开讨论--数据ETL(萃取（extract）、转置（transform）、加载（load）)
+1.建立贴源表：ods_weblog_origin，就是描述的是记录的原始信息
+2.ods_click_pageviews：由加载ClickStream处理过的数据得到，该表关注浏览每个页面的行为
+3.click_stream_visit：由加载ClickStreamVisit处理过的数据得到，该表关注的是会话
+4.ods_weblog_detail：明细表，由ods_weblog_origin转化而来的，将http_referer,time_local字段拆开，变成几个字段
+5.t_ods_tmp_referurl：由ods_weblog_origin转化而来的，将http_referer字段拆开，变成几个字段
+
+六、数据分析：
+1.从ods_weblog_detail读取数据，按时间group by:统计各个小时的pv，统计每天的pv
+2.从ods_weblog_detail读取数据，按referer统计pv总量
+3.点击流模型：（待补充）
+4.关键路径转化率：漏斗模型
+
+七、结果导出：
+1.现在mysql中建立好表
+sqoop export \
+--connect jdbc:mysql://hdp-node-01:3306/webdb --username root --password root \
+--table click_stream_visit \
+--export-dir /user/hive/warehouse/dw_click.db/click_stream_visit/datestr=2013-09-18 \
+--input-fields-terminated-by '\001'
+
